@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+      <title>Serverless Image Editor - Hassan El Bahnasy</title>
+      <style>
+         body {
+         margin: 0;
+         font-family: 'Segoe UI', sans-serif;
+         background-color: #f7f9fc;
+         color: #333;
+         }
+         header {
+         background-color: #ffffff;
+         border-bottom: 1px solid #e0e0e0;
+         padding: 12px 24px;
+         display: flex;
+         align-items: center;
+         justify-content: space-between;
+         }
+         .logo-title {
+         display: flex;
+         align-items: center;
+         gap: 10px;
+         }
+         .logo-title img {
+         height: 36px;
+         }
+         .logo-title h2 {
+         font-size: 1.2rem;
+         margin: 0;
+         color: #1f3f68;
+         }
+         nav a {
+         margin-left: 20px;
+         color: #1f3f68;
+         text-decoration: none;
+         font-weight: 500;
+         }
+         nav a:hover {
+         text-decoration: underline;
+         }
+         .container {
+         max-width: 800px;
+         margin: 40px auto;
+         padding: 20px;
+         }
+         h1 {
+         text-align: center;
+         color: #1f3f68;
+         }
+         .upload-section {
+         background-color: #ffffff;
+         border: 2px dashed #ccc;
+         border-radius: 12px;
+         padding: 30px;
+         text-align: center;
+         margin-top: 30px;
+         }
+         .upload-section.dragover {
+         border-color: #3f51b5;
+         background-color: #eef1fb;
+         }
+         .custom-upload-button {
+         background-color: #3f51b5;
+         color: white;
+         padding: 10px 20px;
+         border-radius: 6px;
+         cursor: pointer;
+         font-weight: 500;
+         display: inline-block;
+         margin-top: 10px;
+         }
+         .preview {
+         max-width: 100%;
+         max-height: 280px;
+         margin-top: 20px;
+         border-radius: 8px;
+         display: none;
+         }
+         .upload-button {
+         background-color: #43a047;
+         color: white;
+         border: none;
+         padding: 10px 24px;
+         font-size: 16px;
+         border-radius: 6px;
+         margin-top: 15px;
+         cursor: pointer;
+         display: none;
+         }
+         #status {
+         margin-top: 10px;
+         font-style: italic;
+         }
+         .progress-container, .processing-container {
+         height: 16px;
+         background-color: #eee;
+         border-radius: 8px;
+         overflow: hidden;
+         margin-top: 12px;
+         display: none;
+         }
+         .progress-bar, .processing-bar {
+         height: 100%;
+         background-color: #4caf50;
+         width: 0%;
+         transition: width 0.3s ease;
+         }
+         .result-card {
+         display: none;
+         background-color: #ffffff;
+         padding: 20px;
+         margin-top: 30px;
+         text-align: center;
+         border-radius: 12px;
+         box-shadow: 0 4px 8px rgba(0,0,0,0.06);
+         }
+         .result-card img {
+         max-width: 100%;
+         border-radius: 8px;
+         }
+         .button-download {
+         display: inline-block;
+         margin-top: 16px;
+         padding: 10px 20px;
+         background-color: #1f3f68;
+         color: white;
+         border-radius: 6px;
+         text-decoration: none;
+         }
+      </style>
+   </head>
+   <body>
+      <header>
+         <div class="logo-title">
+            <img src="https://bahnasy-manara-project-main-bucket.s3.eu-central-1.amazonaws.com/logo.png" alt="logo" />
+            <h2>Serverless Image Editor - Hassan El Bahnasy</h2>
+         </div>
+         <nav>
+            <a href="#">Home</a>
+            <a href="#">Docs</a>
+         </nav>
+      </header>
+      <div class="container">
+         <h1>Upload and Resize Image</h1>
+         <div id="uploadBox" class="upload-section">
+            <p>Drag & Drop your image or</p>
+            <input type="file" id="fileInput" accept="image/*" hidden />
+            <label class="custom-upload-button" for="fileInput">Choose File</label>
+            <img id="preview" class="preview" src="#" alt="Preview" />
+            <br />
+            <button id="uploadButton" class="upload-button" onclick="uploadImage()">Upload</button>
+            <p id="status"></p>
+            <div id="progressContainer" class="progress-container">
+               <div id="progressBar" class="progress-bar"></div>
+            </div>
+            <div id="processingContainer" class="processing-container">
+               <div id="processingBar" class="processing-bar"></div>
+            </div>
+         </div>
+         <div id="result" class="result-card">
+            <h3>✅ Image Processed</h3>
+            <img id="processedImage" src="" alt="Processed Image" />
+            <br />
+            <a id="downloadLink" class="button-download" download>⬇️ Download</a>
+         </div>
+      </div>
+      <script>
+         const fileInput = document.getElementById("fileInput");
+         const preview = document.getElementById("preview");
+         const uploadBox = document.getElementById("uploadBox");
+         const uploadButton = document.getElementById("uploadButton");
+         
+         uploadBox.addEventListener("dragover", e => {
+           e.preventDefault();
+           uploadBox.classList.add("dragover");
+         });
+         
+         uploadBox.addEventListener("dragleave", () => {
+           uploadBox.classList.remove("dragover");
+         });
+         
+         uploadBox.addEventListener("drop", e => {
+           e.preventDefault();
+           uploadBox.classList.remove("dragover");
+           fileInput.files = e.dataTransfer.files;
+           previewFile();
+         });
+         
+         fileInput.onchange = previewFile;
+         
+         function previewFile() {
+           const file = fileInput.files[0];
+           if (!file) return;
+           const reader = new FileReader();
+           reader.onload = e => {
+             preview.src = e.target.result;
+             preview.style.display = "block";
+             uploadButton.style.display = "inline-block";
+           };
+           reader.readAsDataURL(file);
+         }
+         
+         async function uploadImage() {
+           const file = fileInput.files[0];
+           if (!file) return alert("Please select an image");
+         
+           document.getElementById("status").innerText = "Getting upload URL...";
+           const filename = encodeURIComponent(file.name);
+           const uploadApiUrl = "https://a13f7qubcl.execute-api.eu-central-1.amazonaws.com/Prod/upload?filename=" + filename;
+         
+           try {
+             const res = await fetch(uploadApiUrl);
+             const data = await res.json();
+         
+             const formData = new FormData();
+             Object.entries(data.fields).forEach(([k, v]) => formData.append(k, v));
+             formData.append("file", file);
+         
+             const progressBar = document.getElementById("progressBar");
+             const progressContainer = document.getElementById("progressContainer");
+             progressContainer.style.display = "block";
+             progressBar.style.width = "0%";
+         
+             document.getElementById("status").innerText = "Uploading...";
+         
+             const xhr = new XMLHttpRequest();
+             xhr.open("POST", data.url, true);
+         
+             xhr.upload.onprogress = function(e) {
+               if (e.lengthComputable) {
+                 const percent = Math.round((e.loaded / e.total) * 100);
+                 progressBar.style.width = percent + "%";
+               }
+             };
+         
+             xhr.onload = async function() {
+               if (xhr.status === 204) {
+                 document.getElementById("status").innerText = "✅ Uploaded! Processing...";
+         
+                 progressContainer.style.display = "none";
+                 const processingBar = document.getElementById("processingBar");
+                 const processingContainer = document.getElementById("processingContainer");
+                 processingContainer.style.display = "block";
+         
+                 let p = 0;
+                 const animateProcessing = setInterval(() => {
+                   p = (p + 10) % 110;
+                   processingBar.style.width = p + "%";
+                 }, 400);
+         
+                 await new Promise(r => setTimeout(r, 5000));
+                 clearInterval(animateProcessing);
+                 processingContainer.style.display = "none";
+         
+                 const processedUrl = `https://bahnasy-processed-images.s3.eu-central-1.amazonaws.com/resized/${filename}`;
+         
+                 document.getElementById("processedImage").src = processedUrl;
+                 document.getElementById("downloadLink").href = processedUrl;
+                 document.getElementById("result").style.display = "block";
+                 uploadBox.style.display = "none";
+               } else {
+                 document.getElementById("status").innerText = "❌ Upload failed.";
+               }
+             };
+         
+             xhr.onerror = function() {
+               document.getElementById("status").innerText = "❌ Upload error.";
+             };
+         
+             xhr.send(formData);
+           } catch (err) {
+             console.error(err);
+             document.getElementById("status").innerText = "❌ Error: " + err.message;
+           }
+         }
+      </script>
+   </body>
+</html>
